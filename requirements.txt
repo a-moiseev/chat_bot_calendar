@@ -1,5 +1,7 @@
 aiogram==3.29.0
 python-dotenv==1.2.2
+aiosqlite==0.22.1
+apscheduler==3.11.2
 
 # dev
 ruff==0.15.18
