@@ -140,3 +140,13 @@ async def mark_sent(broadcast_id: int) -> None:
             "UPDATE scheduled_broadcasts SET sent = 1 WHERE id = ?", (broadcast_id,)
         )
         await db.commit()
+
+
+async def delete_scheduled(broadcast_id: int) -> bool:
+    """Удаляет ещё не отправленную рассылку. Возвращает True, если удалено."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cur = await db.execute(
+            "DELETE FROM scheduled_broadcasts WHERE id = ? AND sent = 0", (broadcast_id,)
+        )
+        await db.commit()
+        return cur.rowcount > 0

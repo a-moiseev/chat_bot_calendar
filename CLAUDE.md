@@ -33,7 +33,7 @@ cp welcome.example.html welcome.html       # текст приветствия
 - `bot/db.py` — aiosqlite, файл `bot.sqlite3` (игнорируется). Таблицы `subscribers` и `scheduled_broadcasts`.
 - `bot/handlers/start.py` — `/start`: `add_subscriber` (с username) + приветствие.
 - `bot/handlers/broadcast.py` — FSM-мастер (`bot/states.py`): текст → медиа → кнопки → когда (сейчас/по расписанию) → отправка. Только для админов (`bot/filters.py: IsAdmin`).
-- `bot/handlers/admin.py` — админские `/stats` (число и список подписчиков) и `/scheduled` (список отложенных); длинные ответы режутся на части по лимиту Telegram.
+- `bot/handlers/admin.py` — админские `/stats` (число и список подписчиков), `/scheduled` (список отложенных) и `/cancel_scheduled <id>` (отмена отложенной); длинные ответы режутся на части по лимиту Telegram.
 - `bot/keyboards.py` — `parse_buttons` (строки `Текст - ссылка`, делит по **последнему** ` - `), `build_keyboard`, сериализация кнопок в JSON для БД.
 - `bot/broadcaster.py` — `BroadcastPayload` + `send_to`/`broadcast_to_all` (троттлинг ~25 msg/s, удаление заблокировавших, обработка flood-wait). Единый путь отправки для немедленных и отложенных рассылок.
 - `bot/scheduler.py` — APScheduler опрашивает `get_due` раз в минуту и шлёт созревшие рассылки (переживает рестарты, без job-store).

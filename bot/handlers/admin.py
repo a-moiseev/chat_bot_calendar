@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 
 from aiogram import F, Router
+from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 from bot import db
@@ -49,7 +50,10 @@ async def cmd_scheduled(message: Message) -> None:
     if not items:
         await message.answer("Запланированных рассылок нет.")
         return
-    header = f"Запланировано: <b>{len(items)}</b>"
+    header = (
+        f"Запланировано: <b>{len(items)}</b>\n"
+        "Отменить: <code>/cancel_scheduled id</code>"
+    )
     lines = []
     for it in items:
         snippet = html.escape((it.text or "").strip().replace("\n", " "))[:60]
@@ -61,3 +65,15 @@ async def cmd_scheduled(message: Message) -> None:
             f"<b>#{it.id}</b> — {it.send_at} (мск){tag_str}\n{snippet}…"
         )
     await _send_lines(message, header, lines)
+
+
+@router.message(Command("cancel_scheduled"))
+async def cmd_cancel_scheduled(message: Message, command: CommandObject) -> None:
+    arg = (command.args or "").strip()
+    if not arg.isdigit():
+        await message.answer("Укажите id рассылки: <code>/cancel_scheduled 3</code>")
+        return
+    if await db.delete_scheduled(int(arg)):
+        await message.answer(f"Рассылка #{arg} отменена.")
+    else:
+        await message.answer(f"Рассылка #{arg} не найдена среди запланированных.")
