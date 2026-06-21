@@ -20,7 +20,8 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
             continue
         if " - " not in line:
             raise ValueError(f"Строка без разделителя ' - ': {line!r}")
-        label, url = line.split(" - ", 1)
+        # делим по последнему ' - ': в тексте кнопки может быть тире, в URL — нет
+        label, url = line.rsplit(" - ", 1)
         label, url = label.strip(), url.strip()
         if not label or not url:
             raise ValueError(f"Пустой текст или ссылка: {line!r}")
