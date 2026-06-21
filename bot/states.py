@@ -11,4 +11,3 @@ class BroadcastForm(StatesGroup):
     waiting_buttons = State()
     waiting_when = State()
     waiting_datetime = State()
-    waiting_confirm = State()

@@ -12,6 +12,7 @@ from aiogram.enums import ParseMode
 from bot import config
 from bot.db import init_db
 from bot.handlers import broadcast, start
+from bot.scheduler import start_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,6 +32,8 @@ async def main() -> None:
     dp = Dispatcher()
     dp.include_router(broadcast.router)
     dp.include_router(start.router)
+
+    start_scheduler(bot)
 
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)

@@ -14,8 +14,9 @@ from aiogram.types import (
 from bot import db
 from bot.broadcaster import BroadcastPayload, broadcast_to_all, send_to
 from bot.filters import IsAdmin
-from bot.keyboards import parse_buttons
+from bot.keyboards import dump_buttons, parse_buttons
 from bot.states import BroadcastForm
+from bot.timeutils import is_future, parse_send_at
 
 router = Router(name="broadcast")
 router.message.filter(IsAdmin)
@@ -32,13 +33,12 @@ def _payload_from_data(data: dict) -> BroadcastPayload:
     )
 
 
-def _confirm_kb() -> InlineKeyboardMarkup:
+def _when_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [
-                InlineKeyboardButton(text="✅ Отправить", callback_data="bcast:send"),
-                InlineKeyboardButton(text="✖️ Отмена", callback_data="bcast:cancel"),
-            ]
+            [InlineKeyboardButton(text="📣 Отправить сейчас", callback_data="bcast:now")],
+            [InlineKeyboardButton(text="🕒 По расписанию", callback_data="bcast:schedule")],
+            [InlineKeyboardButton(text="✖️ Отмена", callback_data="bcast:cancel")],
         ]
     )
 
@@ -119,21 +119,21 @@ async def _show_preview(message: Message, state: FSMContext) -> None:
     await message.answer("Так будет выглядеть рассылка:")
     await send_to(message.bot, message.chat.id, payload)
     count = await db.count_subscribers()
-    await state.set_state(BroadcastForm.waiting_confirm)
+    await state.set_state(BroadcastForm.waiting_when)
     await message.answer(
-        f"Отправить <b>{count}</b> подписчикам?", reply_markup=_confirm_kb()
+        f"Когда отправить <b>{count}</b> подписчикам?", reply_markup=_when_kb()
     )
 
 
-@router.callback_query(BroadcastForm.waiting_confirm, F.data == "bcast:cancel")
-async def confirm_cancel(callback: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(BroadcastForm.waiting_when, F.data == "bcast:cancel")
+async def when_cancel(callback: CallbackQuery, state: FSMContext) -> None:
     await state.clear()
     await callback.message.edit_text("Рассылка отменена.")
     await callback.answer()
 
 
-@router.callback_query(BroadcastForm.waiting_confirm, F.data == "bcast:send")
-async def confirm_send(callback: CallbackQuery, state: FSMContext) -> None:
+@router.callback_query(BroadcastForm.waiting_when, F.data == "bcast:now")
+async def when_now(callback: CallbackQuery, state: FSMContext) -> None:
     data = await state.get_data()
     await state.clear()
     await callback.message.edit_text("Отправляю…")
@@ -141,3 +141,37 @@ async def confirm_send(callback: CallbackQuery, state: FSMContext) -> None:
     payload = _payload_from_data(data)
     sent, failed = await broadcast_to_all(callback.bot, payload)
     await callback.message.answer(f"Готово. Отправлено: {sent}, ошибок: {failed}.")
+
+
+@router.callback_query(BroadcastForm.waiting_when, F.data == "bcast:schedule")
+async def when_schedule(callback: CallbackQuery, state: FSMContext) -> None:
+    await state.set_state(BroadcastForm.waiting_datetime)
+    await callback.message.edit_text(
+        "Пришлите дату и время отправки (мск) в формате "
+        "<code>ДД.ММ.ГГГГ ЧЧ:ММ</code>, например <code>24.06.2026 19:00</code>."
+    )
+    await callback.answer()
+
+
+@router.message(BroadcastForm.waiting_datetime, F.text)
+async def got_datetime(message: Message, state: FSMContext) -> None:
+    try:
+        send_at = parse_send_at(message.text)
+    except ValueError:
+        await message.answer(
+            "Не понял дату. Формат: <code>ДД.ММ.ГГГГ ЧЧ:ММ</code>. Попробуйте ещё раз."
+        )
+        return
+    if not is_future(send_at):
+        await message.answer("Это время уже прошло. Укажите будущую дату и время.")
+        return
+    data = await state.get_data()
+    await state.clear()
+    await db.add_scheduled(
+        text=data.get("text"),
+        media_type=data.get("media_type"),
+        file_id=data.get("file_id"),
+        buttons=dump_buttons(data.get("buttons", [])),
+        send_at=send_at,
+    )
+    await message.answer(f"Запланировано на <b>{send_at}</b> (мск).")
