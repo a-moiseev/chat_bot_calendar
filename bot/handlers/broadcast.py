@@ -147,8 +147,9 @@ async def when_now(callback: CallbackQuery, state: FSMContext) -> None:
 async def when_schedule(callback: CallbackQuery, state: FSMContext) -> None:
     await state.set_state(BroadcastForm.waiting_datetime)
     await callback.message.edit_text(
-        "Пришлите дату и время отправки (мск) в формате "
-        "<code>ДД.ММ.ГГГГ ЧЧ:ММ</code>, например <code>24.06.2026 19:00</code>."
+        "Пришлите дату и время отправки (мск). Например:\n"
+        "<code>24.06.2026 19:00</code>, <code>24.06 19:00</code> (текущий год) "
+        "или просто <code>19:00</code> (сегодня)."
     )
     await callback.answer()
 

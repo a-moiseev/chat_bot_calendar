@@ -11,6 +11,7 @@ from bot.config import DB_PATH
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS subscribers (
     user_id    INTEGER PRIMARY KEY,
+    username   TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -36,19 +37,32 @@ class ScheduledBroadcast:
     send_at: str
 
 
+@dataclass(slots=True)
+class Subscriber:
+    user_id: int
+    username: str | None
+
+
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_SCHEMA)
+        # миграция старых БД без колонки username
+        async with db.execute("PRAGMA table_info(subscribers)") as cur:
+            columns = {row[1] async for row in cur}
+        if "username" not in columns:
+            await db.execute("ALTER TABLE subscribers ADD COLUMN username TEXT")
         await db.commit()
 
 
 # --- subscribers ---
 
 
-async def add_subscriber(user_id: int) -> None:
+async def add_subscriber(user_id: int, username: str | None = None) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "INSERT OR IGNORE INTO subscribers (user_id) VALUES (?)", (user_id,)
+            "INSERT INTO subscribers (user_id, username) VALUES (?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET username = excluded.username",
+            (user_id, username),
         )
         await db.commit()
 
@@ -63,6 +77,14 @@ async def get_all_subscriber_ids() -> list[int]:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT user_id FROM subscribers") as cur:
             return [row[0] async for row in cur]
+
+
+async def get_all_subscribers() -> list[Subscriber]:
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT user_id, username FROM subscribers ORDER BY created_at"
+        ) as cur:
+            return [Subscriber(*row) async for row in cur]
 
 
 async def count_subscribers() -> int:
@@ -90,6 +112,16 @@ async def add_scheduled(
             (text, media_type, file_id, buttons, send_at),
         )
         await db.commit()
+
+
+async def get_pending() -> list[ScheduledBroadcast]:
+    """Ещё не отправленные отложенные рассылки, по возрастанию времени."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        async with db.execute(
+            "SELECT id, text, media_type, file_id, buttons, send_at "
+            "FROM scheduled_broadcasts WHERE sent = 0 ORDER BY send_at"
+        ) as cur:
+            return [ScheduledBroadcast(*row) async for row in cur]
 
 
 async def get_due(now: str) -> list[ScheduledBroadcast]:

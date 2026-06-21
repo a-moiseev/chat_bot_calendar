@@ -13,5 +13,6 @@ router = Router(name="start")
 
 @router.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    await db.add_subscriber(message.chat.id)
+    username = message.from_user.username if message.from_user else None
+    await db.add_subscriber(message.chat.id, username)
     await message.answer(config.get_welcome_text())

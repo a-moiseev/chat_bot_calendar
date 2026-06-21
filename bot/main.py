@@ -11,7 +11,7 @@ from aiogram.enums import ParseMode
 
 from bot import config
 from bot.db import init_db
-from bot.handlers import broadcast, start
+from bot.handlers import admin, broadcast, start
 from bot.scheduler import start_scheduler
 
 logging.basicConfig(
@@ -30,6 +30,7 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+    dp.include_router(admin.router)
     dp.include_router(broadcast.router)
     dp.include_router(start.router)
 
