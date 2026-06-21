@@ -15,8 +15,8 @@ subscriber — either immediately or on a schedule.
 uv venv --python 3.13
 uv pip install -r requirements.txt
 
-cp .env.example .env                   # set BOT_TOKEN (from @BotFather) and ADMIN_IDS
-cp welcome.example.html welcome.html   # the /start greeting text
+cp .env.example .env                                 # set BOT_TOKEN and ADMIN_IDS
+cp config/welcome.example.html config/welcome.html   # the /start greeting text
 
 .venv/bin/python -m bot.main
 ```
@@ -55,8 +55,8 @@ One-time VPS setup:
 ```bash
 git clone <repo-url> /opt/chat_bot_calendar
 cd /opt/chat_bot_calendar
-cp welcome.example.html welcome.html   # edit the greeting; gitignored, survives pulls
-mkdir -p data                          # SQLite lives here (persisted across deploys)
+cp config/welcome.example.html config/welcome.html   # edit the greeting; gitignored, survives pulls
+mkdir -p data                                        # SQLite lives here (persisted across deploys)
 ```
 
 Configure in the GitHub repository:

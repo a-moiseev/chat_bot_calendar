@@ -12,7 +12,7 @@ load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("DB_PATH") or ROOT_DIR / "bot.sqlite3")
-WELCOME_FILE = ROOT_DIR / "welcome.html"
+WELCOME_FILE = ROOT_DIR / "config" / "welcome.html"
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
@@ -24,10 +24,10 @@ ADMIN_IDS: set[int] = {
 @lru_cache(maxsize=1)
 def get_welcome_text() -> str:
     """Текст приветствия из welcome.html (читается один раз)."""
-    if not WELCOME_FILE.exists():
+    if not WELCOME_FILE.is_file():
         raise FileNotFoundError(
-            f"Не найден {WELCOME_FILE.name}. Скопируйте welcome.example.html в "
-            f"{WELCOME_FILE.name} и впишите текст приветствия."
+            "Не найден config/welcome.html. Скопируйте config/welcome.example.html в "
+            "config/welcome.html и впишите текст приветствия."
         )
     return WELCOME_FILE.read_text(encoding="utf-8").strip()
 

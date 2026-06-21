@@ -10,3 +10,4 @@ tests
 .env
 *.sqlite3
 data
+config/welcome.html

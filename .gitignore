@@ -32,8 +32,8 @@ htmlcov/
 *.log
 *.sqlite3
 
-# Local bot content (use welcome.example.html as template)
-welcome.html
+# Local bot content (use config/welcome.example.html as template)
+config/welcome.html
 
 # Editors
 .idea/
