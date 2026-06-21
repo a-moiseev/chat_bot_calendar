@@ -20,8 +20,7 @@ from bot.timeutils import is_future, parse_send_at
 
 router = Router(name="broadcast")
 router.message.filter(IsAdmin())
-
-_SKIP = "/skip"
+router.callback_query.filter(IsAdmin())
 
 
 def _payload_from_data(data: dict) -> BroadcastPayload:
@@ -30,6 +29,14 @@ def _payload_from_data(data: dict) -> BroadcastPayload:
         media_type=data.get("media_type"),
         file_id=data.get("file_id"),
         buttons=data.get("buttons", []),
+    )
+
+
+def _skip_kb(action: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="⏭ Пропустить", callback_data=action)]
+        ]
     )
 
 
@@ -66,7 +73,8 @@ async def got_text(message: Message, state: FSMContext) -> None:
     await state.update_data(text=message.html_text)
     await state.set_state(BroadcastForm.waiting_media)
     await message.answer(
-        f"Принято. Прикрепите <b>фото или видео</b> или отправьте {_SKIP}, чтобы без медиа."
+        "Принято. Прикрепите <b>фото или видео</b> — или нажмите «Пропустить».",
+        reply_markup=_skip_kb("bcast:skip_media"),
     )
 
 
@@ -82,24 +90,29 @@ async def got_video(message: Message, state: FSMContext) -> None:
     await _ask_buttons(message, state)
 
 
-@router.message(BroadcastForm.waiting_media, F.text == _SKIP)
-async def skip_media(message: Message, state: FSMContext) -> None:
+@router.callback_query(BroadcastForm.waiting_media, F.data == "bcast:skip_media")
+async def skip_media(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(media_type=None, file_id=None)
-    await _ask_buttons(message, state)
+    await callback.message.edit_reply_markup()
+    await callback.answer()
+    await _ask_buttons(callback.message, state)
 
 
 async def _ask_buttons(message: Message, state: FSMContext) -> None:
     await state.set_state(BroadcastForm.waiting_buttons)
     await message.answer(
         "Кнопки — по одной в строке в формате <code>Текст - https://ссылка</code>.\n"
-        f"Или {_SKIP}, чтобы без кнопок."
+        "Или нажмите «Пропустить».",
+        reply_markup=_skip_kb("bcast:skip_buttons"),
     )
 
 
-@router.message(BroadcastForm.waiting_buttons, F.text == _SKIP)
-async def skip_buttons(message: Message, state: FSMContext) -> None:
+@router.callback_query(BroadcastForm.waiting_buttons, F.data == "bcast:skip_buttons")
+async def skip_buttons(callback: CallbackQuery, state: FSMContext) -> None:
     await state.update_data(buttons=[])
-    await _show_preview(message, state)
+    await callback.message.edit_reply_markup()
+    await callback.answer()
+    await _show_preview(callback.message, state)
 
 
 @router.message(BroadcastForm.waiting_buttons, F.text)
@@ -107,7 +120,10 @@ async def got_buttons(message: Message, state: FSMContext) -> None:
     try:
         buttons = parse_buttons(message.text)
     except ValueError as exc:
-        await message.answer(f"Не получилось разобрать кнопки: {exc}\nПопробуйте ещё раз или {_SKIP}.")
+        await message.answer(
+            f"Не получилось разобрать кнопки: {exc}\nПопробуйте ещё раз или «Пропустить».",
+            reply_markup=_skip_kb("bcast:skip_buttons"),
+        )
         return
     await state.update_data(buttons=buttons)
     await _show_preview(message, state)
