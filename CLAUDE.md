@@ -39,6 +39,10 @@ cp welcome.example.html welcome.html       # текст приветствия
 - `bot/scheduler.py` — APScheduler опрашивает `get_due` раз в минуту и шлёт созревшие рассылки (переживает рестарты, без job-store).
 - `bot/timeutils.py` — умный парсинг даты/времени (мск): разные форматы, год по умолчанию текущий, только время = сегодня; сравнение с `now`.
 
+## Деплой
+
+Пуш в `master` → `.github/workflows/deploy.yml`: тесты, затем SSH на VPS (`appleboy/ssh-action`), `git pull` в `/opt/chat_bot_calendar` и `docker compose up -d --build`. Образ — `Dockerfile` (база `ghcr.io/astral-sh/uv`, `uv pip install --system`). `docker-compose.yml` пробрасывает `BOT_TOKEN`/`ADMIN_IDS` из окружения и монтирует `welcome.html` (ro) и `./data` (там SQLite, `DB_PATH=/app/data/bot.sqlite3`). GitHub: секреты `VPS_HOST/VPS_USER/VPS_SSH_KEY/BOT_TOKEN`, переменная `ADMIN_IDS`.
+
 ## Важные детали
 
 - Текст рассылки берётся как `message.html_text`, чтобы сохранить нативное форматирование Telegram (жирный/курсив/ссылки).

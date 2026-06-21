@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT_DIR / "bot.sqlite3"
+DB_PATH = Path(os.environ.get("DB_PATH") or ROOT_DIR / "bot.sqlite3")
 WELCOME_FILE = ROOT_DIR / "welcome.html"
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")

@@ -44,3 +44,28 @@ Scheduled time is Moscow time and accepts several formats: `24.06.2026 19:00`,
 ```bash
 .venv/bin/python -m pytest
 ```
+
+## Deployment
+
+Pushing to `master` triggers `.github/workflows/deploy.yml`: it runs the tests, then
+SSHes into the VPS, pulls the latest code and restarts the container via Docker Compose.
+
+One-time VPS setup:
+
+```bash
+git clone <repo-url> /opt/chat_bot_calendar
+cd /opt/chat_bot_calendar
+cp welcome.example.html welcome.html   # edit the greeting; gitignored, survives pulls
+mkdir -p data                          # SQLite lives here (persisted across deploys)
+```
+
+Configure in the GitHub repository:
+
+- Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `BOT_TOKEN`
+- Variables: `ADMIN_IDS`
+
+Run locally with Docker:
+
+```bash
+BOT_TOKEN=... ADMIN_IDS=... docker compose up -d --build
+```

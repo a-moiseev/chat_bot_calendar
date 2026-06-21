@@ -1,0 +1,59 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install -r requirements.txt --system
+
+      - name: Run tests
+        run: pytest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          ADMIN_IDS: ${{ vars.ADMIN_IDS }}
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: BOT_TOKEN,ADMIN_IDS
+          script: |
+            cd /opt/chat_bot_calendar
+
+            export BOT_TOKEN="$BOT_TOKEN"
+            export ADMIN_IDS="$ADMIN_IDS"
+
+            git pull origin master
+
+            docker compose build
+            docker compose up -d
+
+            echo "Waiting for the bot to start..."
+            sleep 5
+
+            echo "Service status:"
+            docker compose ps
+
+            echo "Bot logs:"
+            docker compose logs --tail=30 bot

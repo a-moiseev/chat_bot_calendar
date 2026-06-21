@@ -1,0 +1,11 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - DB_PATH=/app/data/bot.sqlite3
+    volumes:
+      - ./welcome.html:/app/welcome.html:ro
+      - ./data:/app/data
