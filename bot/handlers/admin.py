@@ -8,13 +8,18 @@ from aiogram import F, Router
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
-from bot import db
+from bot import config, db
 from bot.filters import IsAdmin
 
 router = Router(name="admin")
 router.message.filter(IsAdmin())
 
 _CHUNK_LIMIT = 3500  # запас под лимит Telegram 4096
+
+
+@router.message(F.text == "/help")
+async def cmd_help(message: Message) -> None:
+    await message.answer(config.get_help_text())
 
 
 async def _send_lines(message: Message, header: str, lines: list[str]) -> None:

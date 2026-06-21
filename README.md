@@ -28,6 +28,7 @@ cp config/welcome.example.html config/welcome.html   # the /start greeting text
 
 - Subscriber: `/start` — subscribe and receive the greeting.
 - Admin (listed in `ADMIN_IDS`):
+  - `/help` — list of admin commands (text from `config/help.html`).
   - `/broadcast` — step-by-step wizard (text → photo/video → buttons → now or scheduled);
     `/cancel` aborts the wizard.
   - `/stats` — subscriber count and list (id, username).
