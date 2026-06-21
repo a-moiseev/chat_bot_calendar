@@ -32,7 +32,6 @@ def start_scheduler(bot: Bot) -> AsyncIOScheduler:
         minutes=1,
         args=(bot,),
         id="due_broadcasts",
-        next_run_time=None,
     )
     scheduler.start()
     return scheduler
