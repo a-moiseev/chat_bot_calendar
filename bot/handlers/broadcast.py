@@ -19,7 +19,7 @@ from bot.states import BroadcastForm
 from bot.timeutils import is_future, parse_send_at
 
 router = Router(name="broadcast")
-router.message.filter(IsAdmin)
+router.message.filter(IsAdmin())
 
 _SKIP = "/skip"
 

@@ -12,7 +12,7 @@ from bot import db
 from bot.filters import IsAdmin
 
 router = Router(name="admin")
-router.message.filter(IsAdmin)
+router.message.filter(IsAdmin())
 
 _CHUNK_LIMIT = 3500  # запас под лимит Telegram 4096
 
