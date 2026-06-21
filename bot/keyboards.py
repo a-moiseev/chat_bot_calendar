@@ -34,7 +34,7 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
 
 
 def build_keyboard(buttons: list[tuple[str, str]]) -> InlineKeyboardMarkup | None:
-    """Каждая кнопка — отдельным рядом (как в примере Example_bot)."""
+    """Каждая кнопка — отдельным рядом."""
     if not buttons:
         return None
     rows = [[InlineKeyboardButton(text=label, url=url)] for label, url in buttons]
