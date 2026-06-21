@@ -11,7 +11,7 @@ from aiogram.enums import ParseMode
 
 from bot import config
 from bot.db import init_db
-from bot.handlers import start
+from bot.handlers import broadcast, start
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,6 +29,7 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
     dp = Dispatcher()
+    dp.include_router(broadcast.router)
     dp.include_router(start.router)
 
     await bot.delete_webhook(drop_pending_updates=True)
