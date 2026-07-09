@@ -2,19 +2,30 @@
 
 from __future__ import annotations
 
+import asyncio
+import dataclasses
 import html
+import logging
 
-from aiogram import F, Router
+from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
 from bot import config, db
 from bot.filters import IsAdmin
 
+logger = logging.getLogger(__name__)
+
 router = Router(name="admin")
 router.message.filter(IsAdmin())
 
 _CHUNK_LIMIT = 3500  # запас под лимит Telegram 4096
+
+# Подписчиков, подписавшихся до появления колонки full_name, дозаполняем через
+# getChat — по одному запросу на человека, поэтому за раз берём ограниченную пачку.
+_BACKFILL_LIMIT = 50
+_BACKFILL_DELAY = 0.05
 
 
 @router.message(F.text == "/help")
@@ -34,17 +45,47 @@ async def _send_lines(message: Message, header: str, lines: list[str]) -> None:
         await message.answer(chunk)
 
 
+async def _backfill_names(bot: Bot, subs: list[db.Subscriber]) -> list[db.Subscriber]:
+    """Подтягивает имена тех, у кого они пустые, и возвращает обновлённый список."""
+    missing = [s for s in subs if not s.full_name][:_BACKFILL_LIMIT]
+    if not missing:
+        return subs
+    fetched: dict[int, db.Subscriber] = {}
+    for sub in missing:
+        try:
+            chat = await bot.get_chat(sub.user_id)
+        except TelegramAPIError as err:
+            # Заблокировал бота или удалил аккаунт — оставляем как есть.
+            logger.warning("getChat failed for %s: %s", sub.user_id, err)
+            continue
+        await db.set_names(sub.user_id, chat.username, chat.full_name)
+        fetched[sub.user_id] = dataclasses.replace(
+            sub, username=chat.username, full_name=chat.full_name
+        )
+        await asyncio.sleep(_BACKFILL_DELAY)
+    return [fetched.get(s.user_id, s) for s in subs]
+
+
+def _describe(sub: db.Subscriber) -> str:
+    """Имя и @username; имя приходит из профиля, поэтому экранируем."""
+    parts = []
+    if sub.full_name:
+        parts.append(html.escape(sub.full_name))
+    if sub.username:
+        parts.append(f"@{sub.username}")
+    return " ".join(parts) or "—"
+
+
 @router.message(F.text == "/stats")
-async def cmd_stats(message: Message) -> None:
+async def cmd_stats(message: Message, bot: Bot) -> None:
     subs = await db.get_all_subscribers()
     if not subs:
         await message.answer("Подписчиков пока нет.")
         return
+    subs = await _backfill_names(bot, subs)
     header = f"Подписчиков: <b>{len(subs)}</b>"
     lines = [
-        f"{i}. <code>{s.user_id}</code> "
-        + (f"@{s.username}" if s.username else "—")
-        for i, s in enumerate(subs, 1)
+        f"{i}. <code>{s.user_id}</code> {_describe(s)}" for i, s in enumerate(subs, 1)
     ]
     await _send_lines(message, header, lines)
 

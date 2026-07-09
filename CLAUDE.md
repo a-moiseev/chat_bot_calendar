@@ -30,10 +30,10 @@ cp config/welcome.example.html config/welcome.html   # текст приветс
 Точка входа `bot/main.py` поднимает `Bot`/`Dispatcher` (глобальный `parse_mode=HTML`), инициализирует БД, регистрирует роутеры и стартует планировщик.
 
 - `bot/config.py` — `BOT_TOKEN`, `ADMIN_IDS` из `.env`; `get_welcome_text()` лениво читает `config/welcome.html` (кэш). `config/welcome.html` в `.gitignore`, шаблон — `config/welcome.example.html`. `get_help_text()` так же читает `config/help.html` (этот файл закоммичен — справка по командам). В Docker монтируется каталог `./config` (каталог, а не файл — иначе bind-mount создаёт пустую папку).
-- `bot/db.py` — aiosqlite, файл `bot.sqlite3` (игнорируется). Таблицы `subscribers` и `scheduled_broadcasts`.
-- `bot/handlers/start.py` — `/start`: `add_subscriber` (с username) + приветствие.
+- `bot/db.py` — aiosqlite, файл `bot.sqlite3` (игнорируется). Таблицы `subscribers` (`user_id`, `username`, `full_name`) и `scheduled_broadcasts`. `init_db` доливает недостающие колонки в старые БД через `PRAGMA table_info`.
+- `bot/handlers/start.py` — `/start`: `add_subscriber` (с username и именем) + приветствие.
 - `bot/handlers/broadcast.py` — FSM-мастер (`bot/states.py`): текст → медиа → кнопки → когда (сейчас/по расписанию) → отправка. Только для админов (`bot/filters.py: IsAdmin`).
-- `bot/handlers/admin.py` — админские `/help` (текст из `config/help.html`), `/stats` (число и список подписчиков), `/scheduled` (список отложенных) и `/cancel_scheduled <id>` (отмена отложенной); длинные ответы режутся на части по лимиту Telegram.
+- `bot/handlers/admin.py` — админские `/help` (текст из `config/help.html`), `/stats` (число и список подписчиков), `/scheduled` (список отложенных) и `/cancel_scheduled <id>` (отмена отложенной); длинные ответы режутся на части по лимиту Telegram. `/stats` перед выводом дозаполняет пустые `full_name` через `getChat` (пачками по 50) — так подтягиваются имена тех, кто подписался до появления колонки. Имя приходит из профиля, поэтому в вывод идёт только через `html.escape` (`parse_mode=HTML` глобальный).
 - `bot/keyboards.py` — `parse_buttons` (строки `Текст - ссылка`, делит по **последнему** ` - `), `build_keyboard`, сериализация кнопок в JSON для БД.
 - `bot/broadcaster.py` — `BroadcastPayload` + `send_to`/`broadcast_to_all` (троттлинг ~25 msg/s, удаление заблокировавших, обработка flood-wait). Единый путь отправки для немедленных и отложенных рассылок.
 - `bot/scheduler.py` — APScheduler опрашивает `get_due` раз в минуту и шлёт созревшие рассылки (переживает рестарты, без job-store).

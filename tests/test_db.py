@@ -38,7 +38,25 @@ async def test_delete_sent_returns_false(tmp_db):
 
 async def test_subscriber_upsert_updates_username(tmp_db):
     await db.init_db()
-    await db.add_subscriber(1, "alice")
-    await db.add_subscriber(1, "alice_new")
+    await db.add_subscriber(1, "alice", "Alice")
+    await db.add_subscriber(1, "alice_new", "Alice Cooper")
     subs = await db.get_all_subscribers()
-    assert subs == [db.Subscriber(user_id=1, username="alice_new")]
+    assert subs == [
+        db.Subscriber(user_id=1, username="alice_new", full_name="Alice Cooper")
+    ]
+
+
+async def test_subscriber_upsert_keeps_name_when_not_given(tmp_db):
+    await db.init_db()
+    await db.add_subscriber(1, "alice", "Alice")
+    await db.add_subscriber(1, None)
+    subs = await db.get_all_subscribers()
+    assert subs == [db.Subscriber(user_id=1, username=None, full_name="Alice")]
+
+
+async def test_set_names(tmp_db):
+    await db.init_db()
+    await db.add_subscriber(1)
+    await db.set_names(1, None, "Мария Иванова")
+    subs = await db.get_all_subscribers()
+    assert subs == [db.Subscriber(user_id=1, username=None, full_name="Мария Иванова")]

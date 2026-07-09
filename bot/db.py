@@ -12,6 +12,7 @@ _SCHEMA = """
 CREATE TABLE IF NOT EXISTS subscribers (
     user_id    INTEGER PRIMARY KEY,
     username   TEXT,
+    full_name  TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -41,28 +42,47 @@ class ScheduledBroadcast:
 class Subscriber:
     user_id: int
     username: str | None
+    full_name: str | None
 
 
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_SCHEMA)
-        # миграция старых БД без колонки username
+        # миграция старых БД, где этих колонок ещё не было
         async with db.execute("PRAGMA table_info(subscribers)") as cur:
             columns = {row[1] async for row in cur}
-        if "username" not in columns:
-            await db.execute("ALTER TABLE subscribers ADD COLUMN username TEXT")
+        for column in ("username", "full_name"):
+            if column not in columns:
+                await db.execute(
+                    f"ALTER TABLE subscribers ADD COLUMN {column} TEXT"  # noqa: S608
+                )
         await db.commit()
 
 
 # --- subscribers ---
 
 
-async def add_subscriber(user_id: int, username: str | None = None) -> None:
+async def add_subscriber(
+    user_id: int, username: str | None = None, full_name: str | None = None
+) -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
-            "INSERT INTO subscribers (user_id, username) VALUES (?, ?) "
-            "ON CONFLICT(user_id) DO UPDATE SET username = excluded.username",
-            (user_id, username),
+            "INSERT INTO subscribers (user_id, username, full_name) VALUES (?, ?, ?) "
+            "ON CONFLICT(user_id) DO UPDATE SET "
+            "  username = excluded.username, "
+            # имя есть не у всех вызовов — не затираем уже сохранённое
+            "  full_name = COALESCE(excluded.full_name, subscribers.full_name)",
+            (user_id, username, full_name),
+        )
+        await db.commit()
+
+
+async def set_names(user_id: int, username: str | None, full_name: str | None) -> None:
+    """Обновляет имя и username подписчика (данные из getChat)."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE subscribers SET username = ?, full_name = ? WHERE user_id = ?",
+            (username, full_name, user_id),
         )
         await db.commit()
 
@@ -82,7 +102,7 @@ async def get_all_subscriber_ids() -> list[int]:
 async def get_all_subscribers() -> list[Subscriber]:
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
-            "SELECT user_id, username FROM subscribers ORDER BY created_at"
+            "SELECT user_id, username, full_name FROM subscribers ORDER BY created_at"
         ) as cur:
             return [Subscriber(*row) async for row in cur]
 
