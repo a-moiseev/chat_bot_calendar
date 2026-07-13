@@ -49,11 +49,23 @@ jobs:
             docker compose build
             docker compose up -d
 
-            echo "Waiting for the bot to start..."
-            sleep 5
+            echo "Waiting for the bot to become healthy..."
+            for _ in $(seq 1 30); do
+              if curl -fsS "http://127.0.0.1:${HEALTH_PORT:-8080}/healthz"; then
+                healthy=1
+                echo
+                break
+              fi
+              sleep 2
+            done
 
             echo "Service status:"
             docker compose ps
 
             echo "Bot logs:"
             docker compose logs --tail=30 bot
+
+            if [ -z "$healthy" ]; then
+              echo "Бот не ответил 200 на /healthz за 60 секунд — деплой считаем неудачным"
+              exit 1
+            fi

@@ -40,6 +40,25 @@ Buttons are entered one per line as `Label - https://link`.
 Scheduled time is Moscow time and accepts several formats: `24.06.2026 19:00`,
 `24.06 19:00` (current year), or just `19:00` (today).
 
+## Health check
+
+The bot serves a liveness probe on `HEALTH_PORT` (default `8080`):
+
+```bash
+curl http://127.0.0.1:8080/healthz
+{"status": "ok", "uptime": 3600, "last_tick": {"loop": 12, "telegram": 78}}
+```
+
+It answers **200** while the bot is alive and **503** with a `problems` list when it is
+not — the update polling loop has stopped, the scheduler tick or the last successful
+`getMe` has gone stale, or the scheduled-broadcast job is paused. This catches the
+failure mode a restart policy cannot: the process is still up, but stuck.
+
+Point an external monitor (Uptime Kuma, healthchecks.io, …) at
+`http://<vps>:8080/healthz` with accepted status code `200`. Docker Compose also runs
+the same check as a container `healthcheck`, so `docker compose ps` shows the state, and
+the deploy fails if the bot does not report healthy within 60 seconds.
+
 ## Tests
 
 ```bash

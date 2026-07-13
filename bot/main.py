@@ -12,12 +12,15 @@ from aiogram.enums import ParseMode
 from bot import config
 from bot.db import init_db
 from bot.handlers import admin, broadcast, start
+from bot.health import health, start_health_server
 from bot.scheduler import start_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def main() -> None:
@@ -34,10 +37,22 @@ async def main() -> None:
     dp.include_router(broadcast.router)
     dp.include_router(start.router)
 
-    start_scheduler(bot)
+    me = await bot.get_me()  # упасть на старте, если токен не рабочий
+    health.tick("telegram")
+    logger.info("Бот @%s запущен", me.username)
+
+    scheduler = start_scheduler(bot)
 
     await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    polling = asyncio.create_task(dp.start_polling(bot))
+    health.watch(polling=polling, scheduler=scheduler)
+    runner = await start_health_server()
+
+    try:
+        await polling
+    finally:
+        await runner.cleanup()
+        scheduler.shutdown(wait=False)
 
 
 if __name__ == "__main__":
