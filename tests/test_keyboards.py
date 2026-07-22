@@ -28,14 +28,39 @@ def test_parse_label_with_inner_dash():
 
 
 @pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("https://example.com", [("example.com", "https://example.com")]),
+        # www. is noise on a button label
+        (
+            "https://www.example.com/a/b",
+            [("example.com", "https://www.example.com/a/b")],
+        ),
+        (
+            "http://sub.example.co.uk:8080/x",
+            [("sub.example.co.uk", "http://sub.example.co.uk:8080/x")],
+        ),
+        # mixed with the labelled form, and indented
+        (
+            "  https://a.com\nLabel - https://b.com",
+            [("a.com", "https://a.com"), ("Label", "https://b.com")],
+        ),
+    ],
+)
+def test_parse_bare_link_uses_host_as_label(text, expected):
+    assert parse_buttons(text) == expected
+
+
+@pytest.mark.parametrize(
     ("text", "key"),
     [
         ("no separator here", "button_error.no_separator"),
+        ("example.com", "button_error.no_separator"),  # bare, but not http(s)
         ("Label - ftp://x.com", "button_error.bad_scheme"),
-        # a stripped line can never start or end with the separator's padding,
-        # so these report a missing separator rather than an empty part
-        (" - https://x.com", "button_error.no_separator"),
-        ("Label - ", "button_error.no_separator"),
+        # the separator is matched before stripping, so its padding survives
+        # and these report the empty part rather than a missing separator
+        (" - https://x.com", "button_error.empty_part"),
+        ("Label - ", "button_error.empty_part"),
         ("", "button_error.no_buttons"),
     ],
 )

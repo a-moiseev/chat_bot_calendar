@@ -40,7 +40,8 @@ scheduled = "Scheduled for <b>{send_at}</b> (Moscow time)."
 [button_error]
 # {line!r} / {url!r} keep the repr() conversion the original f-strings used, so
 # the offending input is shown quoted with escapes visible.
-no_separator = "Line has no ' - ' separator: {line!r}"
+no_separator = "Expected 'Label - https://link' or a bare link: {line!r}"
+empty_part = "Empty label or link: {line!r}"
 bad_scheme = "Link must start with http:// or https://: {url!r}"
 no_buttons = "No buttons found."
 
@@ -71,6 +72,7 @@ A step-by-step wizard asks for: text -> photo/video (skippable) -> buttons (skip
 
 <b>Button format</b>
 One per line: <code>Label - https://link</code>
+A bare <code>https://link</code> also works — the site's host becomes the label.
 
 <b>Date format (Moscow time)</b>
 <code>24.06.2026 19:00</code> — full date

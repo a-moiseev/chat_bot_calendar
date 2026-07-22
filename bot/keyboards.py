@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from urllib.parse import urlsplit
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -21,23 +22,40 @@ class ButtonParseError(ValueError):
         self.params = params
 
 
-def parse_buttons(text: str) -> list[tuple[str, str]]:
-    """Parse lines of the form 'Label - https://...' into (label, url) pairs.
+def _label_from_url(url: str) -> str:
+    """Host of a bare URL, used as its button label: 'https://x.ru/a' -> 'x.ru'."""
+    # rpartition, not partition: with no '@' present partition returns the host
+    # in its *first* slot, so [-1] would be the empty string
+    host = urlsplit(url).netloc.rpartition("@")[-1].partition(":")[0]
+    return host.removeprefix("www.") or url
 
-    The separator is ' - ', split on its last occurrence. Blank lines are
-    skipped. Raises ButtonParseError if a line has no separator, has an empty
-    part, or carries a non-http(s) URL.
+
+def parse_buttons(text: str) -> list[tuple[str, str]]:
+    """Parse button lines into (label, url) pairs.
+
+    A line is either 'Label - https://...' or a bare 'https://...', in which
+    case the host becomes the label. The separator is ' - ', split on its last
+    occurrence. Blank lines are skipped. Raises ButtonParseError if a line is
+    neither form, has an empty part, or carries a non-http(s) URL.
     """
     buttons: list[tuple[str, str]] = []
     for raw in text.splitlines():
-        line = raw.strip()
-        if not line:
+        if not raw.strip():
             continue
-        if " - " not in line:
-            raise ButtonParseError("button_error.no_separator", line=line)
-        # split on the last ' - ': a label may contain a dash, a URL may not
-        label, url = line.rsplit(" - ", 1)
-        label, url = label.strip(), url.strip()
+        # Look for the separator in the unstripped line: stripping first would
+        # eat the padding of a leading or trailing ' - ', hiding an empty part
+        # behind a "no separator" complaint.
+        if " - " in raw:
+            # split on the last ' - ': a label may contain a dash, a URL may not
+            label, url = raw.rsplit(" - ", 1)
+            label, url = label.strip(), url.strip()
+            if not label or not url:
+                raise ButtonParseError("button_error.empty_part", line=raw.strip())
+        else:
+            url = raw.strip()
+            if not url.startswith(("http://", "https://")):
+                raise ButtonParseError("button_error.no_separator", line=url)
+            label = _label_from_url(url)
         if not url.startswith(("http://", "https://")):
             raise ButtonParseError("button_error.bad_scheme", url=url)
         buttons.append((label, url))
