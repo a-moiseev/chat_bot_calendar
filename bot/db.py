@@ -166,7 +166,8 @@ async def delete_scheduled(broadcast_id: int) -> bool:
     """Удаляет ещё не отправленную рассылку. Возвращает True, если удалено."""
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
-            "DELETE FROM scheduled_broadcasts WHERE id = ? AND sent = 0", (broadcast_id,)
+            "DELETE FROM scheduled_broadcasts WHERE id = ? AND sent = 0",
+            (broadcast_id,),
         )
         await db.commit()
         return cur.rowcount > 0

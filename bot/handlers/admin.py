@@ -107,9 +107,7 @@ async def cmd_scheduled(message: Message) -> None:
         if it.media_type:
             tags.append(it.media_type)
         tag_str = f" [{', '.join(tags)}]" if tags else ""
-        lines.append(
-            f"<b>#{it.id}</b> — {it.send_at} (мск){tag_str}\n{snippet}…"
-        )
+        lines.append(f"<b>#{it.id}</b> — {it.send_at} (мск){tag_str}\n{snippet}…")
     await _send_lines(message, header, lines)
 
 

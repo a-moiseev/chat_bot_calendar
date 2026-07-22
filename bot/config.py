@@ -20,7 +20,9 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT") or 8080)
 
 ADMIN_IDS: set[int] = {
-    int(part) for part in os.environ.get("ADMIN_IDS", "").replace(" ", "").split(",") if part
+    int(part)
+    for part in os.environ.get("ADMIN_IDS", "").replace(" ", "").split(",")
+    if part
 }
 
 

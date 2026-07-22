@@ -5,7 +5,10 @@ async def test_process_due_marks_sent(tmp_db):
     # без подписчиков broadcast_to_all не трогает bot, поэтому bot=None безопасен
     await db.init_db()
     await db.add_scheduled(
-        text="hi", media_type=None, file_id=None, buttons=None,
+        text="hi",
+        media_type=None,
+        file_id=None,
+        buttons=None,
         send_at="2000-01-01 00:00:00",
     )
     await scheduler._process_due(bot=None)
@@ -15,7 +18,10 @@ async def test_process_due_marks_sent(tmp_db):
 async def test_process_due_skips_future(tmp_db):
     await db.init_db()
     await db.add_scheduled(
-        text="later", media_type=None, file_id=None, buttons=None,
+        text="later",
+        media_type=None,
+        file_id=None,
+        buttons=None,
         send_at="2099-01-01 00:00:00",
     )
     await scheduler._process_due(bot=None)

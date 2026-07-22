@@ -43,8 +43,16 @@ def _skip_kb(action: str) -> InlineKeyboardMarkup:
 def _when_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📣 Отправить сейчас", callback_data="bcast:now")],
-            [InlineKeyboardButton(text="🕒 По расписанию", callback_data="bcast:schedule")],
+            [
+                InlineKeyboardButton(
+                    text="📣 Отправить сейчас", callback_data="bcast:now"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🕒 По расписанию", callback_data="bcast:schedule"
+                )
+            ],
             [InlineKeyboardButton(text="✖️ Отмена", callback_data="bcast:cancel")],
         ]
     )

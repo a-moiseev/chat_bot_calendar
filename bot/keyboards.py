@@ -26,7 +26,9 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
         if not label or not url:
             raise ValueError(f"Пустой текст или ссылка: {line!r}")
         if not url.startswith(("http://", "https://")):
-            raise ValueError(f"Ссылка должна начинаться с http:// или https://: {url!r}")
+            raise ValueError(
+                f"Ссылка должна начинаться с http:// или https://: {url!r}"
+            )
         buttons.append((label, url))
     if not buttons:
         raise ValueError("Не найдено ни одной кнопки.")
