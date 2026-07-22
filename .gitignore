@@ -35,7 +35,8 @@ htmlcov/
 # Local bot content (use config/welcome.example.html as template)
 config/welcome.html
 
-# Editors
+# Editors / local tooling
 .idea/
 .vscode/
+.claude/
 .DS_Store
