@@ -5,15 +5,16 @@ services:
     environment:
       - BOT_TOKEN=${BOT_TOKEN}
       - ADMIN_IDS=${ADMIN_IDS}
+      - LOCALE=${LOCALE:-en}
       - DB_PATH=/app/data/bot.sqlite3
     volumes:
       - ./config:/app/config:ro
       - ./data:/app/data
     ports:
-      # liveness probe наружу — для внешнего мониторинга (Uptime Kuma и т.п.)
+      # expose the liveness probe for external monitoring (Uptime Kuma etc.)
       - "${HEALTH_PORT:-8080}:8080"
     healthcheck:
-      # в slim-образе нет curl, поэтому проверяем через python
+      # the slim image has no curl, so probe via python
       test:
         - CMD
         - python

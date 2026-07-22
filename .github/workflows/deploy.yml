@@ -5,24 +5,11 @@ on:
     branches: [master]
 
 jobs:
+  # Same checks ci.yml runs. Master pushes therefore run them twice, once here
+  # and once via ci.yml; that keeps the README badge reflecting master while the
+  # deploy still gates on its own green run.
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install dependencies
-        run: |
-          pip install uv
-          uv pip install -r requirements.txt --system
-
-      - name: Run tests
-        run: pytest
+    uses: ./.github/workflows/checks.yml
 
   deploy:
     runs-on: ubuntu-latest
@@ -33,16 +20,18 @@ jobs:
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           ADMIN_IDS: ${{ vars.ADMIN_IDS }}
+          LOCALE: ${{ vars.LOCALE }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: BOT_TOKEN,ADMIN_IDS
+          envs: BOT_TOKEN,ADMIN_IDS,LOCALE
           script: |
             cd /opt/chat_bot_calendar
 
             export BOT_TOKEN="$BOT_TOKEN"
             export ADMIN_IDS="$ADMIN_IDS"
+            export LOCALE="$LOCALE"
 
             git pull origin master
 
@@ -66,6 +55,6 @@ jobs:
             docker compose logs --tail=30 bot
 
             if [ -z "$healthy" ]; then
-              echo "Бот не ответил 200 на /healthz за 60 секунд — деплой считаем неудачным"
+              echo "The bot did not answer 200 on /healthz within 60 seconds - deploy failed"
               exit 1
             fi

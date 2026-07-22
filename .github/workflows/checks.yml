@@ -1,0 +1,35 @@
+name: Checks
+
+# Defined once and called by both ci.yml and deploy.yml, so the deploy gate and
+# the pull-request gate can never drift apart.
+on:
+  workflow_call:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install -r requirements.txt --system
+
+      - name: Lint
+        run: ruff check .
+
+      - name: Check formatting
+        run: ruff format --check .
+
+      - name: Type check
+        run: mypy .
+
+      - name: Run tests
+        run: pytest

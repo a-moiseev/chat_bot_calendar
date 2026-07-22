@@ -1,5 +1,7 @@
 # chat_bot_calendar
 
+[![CI](https://github.com/a-moiseev/chat_bot_calendar/actions/workflows/ci.yml/badge.svg)](https://github.com/a-moiseev/chat_bot_calendar/actions/workflows/ci.yml)
+
 A Telegram broadcast bot built with aiogram 3.x. Users subscribe with `/start`, and an
 administrator sends the same message (text, photo/video, inline buttons) to every
 subscriber — either immediately or on a schedule.
@@ -28,7 +30,7 @@ cp config/welcome.example.html config/welcome.html   # the /start greeting text
 
 - Subscriber: `/start` — subscribe and receive the greeting.
 - Admin (listed in `ADMIN_IDS`):
-  - `/help` — list of admin commands (text from `config/help.html`).
+  - `/help` — list of admin commands.
   - `/broadcast` — step-by-step wizard (text → photo/video → buttons → now or scheduled);
     `/cancel` aborts the wizard.
   - `/stats` — subscriber count and list (id, username).
@@ -39,6 +41,22 @@ Buttons are entered one per line as `Label - https://link`.
 
 Scheduled time is Moscow time and accepts several formats: `24.06.2026 19:00`,
 `24.06 19:00` (current year), or just `19:00` (today).
+
+## Localization
+
+Everything the bot says lives in `config/messages.<locale>.toml`; `LOCALE` picks one
+(`en` by default, `ru` also shipped). Operator-facing output — startup errors, log
+lines, the `/healthz` body — is deliberately *not* localized and stays English, since
+its audience runs the bot rather than uses it.
+
+To add a language, copy `config/messages.en.toml` to `config/messages.<code>.toml`,
+translate the values, and set `LOCALE=<code>`. `tests/test_i18n.py` enforces that every
+catalog carries the same keys with the same placeholders, that the HTML in each value is
+balanced, and that every key used in the code actually exists — so a missing or mistyped
+translation fails CI instead of reaching a user.
+
+The `/start` greeting is separate: it is per-deployment copy, not product copy, so it
+lives in `config/welcome.html` (gitignored) rather than in the catalogs.
 
 ## Health check
 
@@ -59,12 +77,6 @@ Point an external monitor (Uptime Kuma, healthchecks.io, …) at
 the same check as a container `healthcheck`, so `docker compose ps` shows the state, and
 the deploy fails if the bot does not report healthy within 60 seconds.
 
-## Tests
-
-```bash
-.venv/bin/python -m pytest
-```
-
 ## Deployment
 
 Pushing to `master` triggers `.github/workflows/deploy.yml`: it runs the tests, then
@@ -82,10 +94,26 @@ mkdir -p data                                        # SQLite lives here (persis
 Configure in the GitHub repository:
 
 - Secrets: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `BOT_TOKEN`
-- Variables: `ADMIN_IDS`
+- Variables: `ADMIN_IDS`, `LOCALE`
 
 Run locally with Docker:
 
 ```bash
-BOT_TOKEN=... ADMIN_IDS=... docker compose up -d --build
+BOT_TOKEN=... ADMIN_IDS=... LOCALE=en docker compose up -d --build
 ```
+
+## Development
+
+```bash
+.venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/mypy .
+.venv/bin/python -m pytest
+```
+
+`.github/workflows/checks.yml` runs exactly these four and is called by both `ci.yml`
+(pull requests and master) and `deploy.yml`, so the deploy gate cannot drift from the
+pull-request gate.
+
+## License
+
+[MIT](LICENSE)
