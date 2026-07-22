@@ -33,7 +33,11 @@ jobs:
             export ADMIN_IDS="$ADMIN_IDS"
             export LOCALE="$LOCALE"
 
-            git pull origin master
+            # fetch + reset, not pull: pull breaks on a force-pushed branch,
+            # and reset makes the deployed tree match origin exactly. Ignored
+            # paths (config/welcome.html, data/) are left untouched.
+            git fetch origin master
+            git reset --hard origin/master
 
             docker compose build
             docker compose up -d
