@@ -1,4 +1,4 @@
-"""FSM-состояния мастера рассылки."""
+"""FSM states for the broadcast wizard."""
 
 from __future__ import annotations
 

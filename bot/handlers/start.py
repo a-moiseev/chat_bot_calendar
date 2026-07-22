@@ -1,4 +1,4 @@
-"""Команда /start: подписка пользователя и приветствие."""
+"""The /start command: subscribe the user and send the greeting."""
 
 from __future__ import annotations
 

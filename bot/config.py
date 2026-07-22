@@ -1,4 +1,4 @@
-"""Конфигурация бота: токен, админы, текст приветствия."""
+"""Bot configuration: token, admins, and deployment-specific content."""
 
 from __future__ import annotations
 
@@ -28,11 +28,11 @@ ADMIN_IDS: set[int] = {
 
 @lru_cache(maxsize=1)
 def get_welcome_text() -> str:
-    """Текст приветствия из welcome.html (читается один раз)."""
+    """Greeting text from welcome.html (read once per process)."""
     if not WELCOME_FILE.is_file():
         raise FileNotFoundError(
-            "Не найден config/welcome.html. Скопируйте config/welcome.example.html в "
-            "config/welcome.html и впишите текст приветствия."
+            "config/welcome.html not found. Copy config/welcome.example.html to "
+            "config/welcome.html and write your greeting there."
         )
     return WELCOME_FILE.read_text(encoding="utf-8").strip()
 
@@ -46,8 +46,8 @@ def get_help_text() -> str:
 
 
 def validate() -> None:
-    """Проверка обязательных настроек при старте."""
+    """Validate required settings at startup."""
     if not BOT_TOKEN:
-        raise RuntimeError("Не задан BOT_TOKEN (см. .env.example).")
+        raise RuntimeError("BOT_TOKEN is not set (see .env.example).")
     if not ADMIN_IDS:
-        raise RuntimeError("Не задан ADMIN_IDS (см. .env.example).")
+        raise RuntimeError("ADMIN_IDS is not set (see .env.example).")

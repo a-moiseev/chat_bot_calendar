@@ -1,4 +1,4 @@
-"""Фильтры доступа."""
+"""Access filters."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from bot.config import ADMIN_IDS
 
 
 class IsAdmin(BaseFilter):
-    """Пропускает только администраторов из ADMIN_IDS (сообщения и callback'и)."""
+    """Allow only administrators listed in ADMIN_IDS (messages and callbacks)."""
 
     async def __call__(self, event: Message | CallbackQuery) -> bool:
         return event.from_user is not None and event.from_user.id in ADMIN_IDS

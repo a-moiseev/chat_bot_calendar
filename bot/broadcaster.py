@@ -1,4 +1,4 @@
-"""Отправка одного сообщения и рассылка всем подписчикам."""
+"""Sending a single message, and broadcasting to every subscriber."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from bot.keyboards import build_keyboard, load_buttons
 
 logger = logging.getLogger(__name__)
 
-# Лимит Telegram ~30 сообщений/сек; держим запас.
+# Telegram allows ~30 messages/sec; keep some headroom.
 _RATE_LIMIT = 25
 _DELAY = 1 / _RATE_LIMIT
 
@@ -37,35 +37,36 @@ class BroadcastPayload:
 
 
 def _messages_per_subscriber(payload: BroadcastPayload) -> int:
-    """Сколько сообщений уходит одному подписчику — медиа и текст раздельно."""
+    """How many messages one subscriber receives: media and text go separately."""
     return (1 if payload.media_type else 0) + (1 if payload.text else 0) or 1
 
 
 async def send_to(bot: Bot, chat_id: int, payload: BroadcastPayload) -> None:
-    """Отправляет рассылку в конкретный чат.
+    """Send the broadcast to one chat.
 
-    Медиа и текст шлём разными сообщениями: подпись к медиа Telegram
-    ограничивает 1024 символами, а обычный текст — 4096. Кнопки вешаем на
-    последнее сообщение (на текст, если он есть, иначе — на медиа).
+    Media and text go as separate messages: Telegram caps a media caption at
+    1024 characters but allows 4096 for plain text. The keyboard is attached to
+    the last message (the text if there is one, otherwise the media).
     """
     markup = build_keyboard(payload.buttons)
     media_markup = None if payload.text else markup
     if payload.media_type == "photo":
-        await bot.send_photo(chat_id, payload.file_id, reply_markup=media_markup)
+        await bot.send_photo(chat_id, payload.file_id or "", reply_markup=media_markup)
     elif payload.media_type == "video":
-        await bot.send_video(chat_id, payload.file_id, reply_markup=media_markup)
+        await bot.send_video(chat_id, payload.file_id or "", reply_markup=media_markup)
     if payload.text or not payload.media_type:
         await bot.send_message(chat_id, payload.text or "", reply_markup=markup)
 
 
 async def broadcast_to_all(bot: Bot, payload: BroadcastPayload) -> tuple[int, int]:
-    """Рассылает всем подписчикам. Возвращает (успешно, ошибок).
+    """Broadcast to every subscriber. Returns (sent, failed).
 
-    Заблокировавших бота удаляет из БД, на flood-wait ждёт и повторяет.
+    Subscribers who blocked the bot are dropped from the database; on a
+    flood-wait we back off and retry once.
     """
     sent = failed = 0
-    # Медиа-рассылка шлёт по 2 сообщения на подписчика — троттлим по их числу,
-    # чтобы суммарный темп остался в пределах лимита Telegram.
+    # A media broadcast sends 2 messages per subscriber, so throttle by that
+    # count to keep the overall rate within Telegram's limit.
     delay = _DELAY * _messages_per_subscriber(payload)
     for chat_id in await db.get_all_subscriber_ids():
         try:
@@ -82,7 +83,7 @@ async def broadcast_to_all(bot: Bot, payload: BroadcastPayload) -> tuple[int, in
             await db.remove_subscriber(chat_id)
             failed += 1
         except Exception:  # noqa: BLE001
-            logger.exception("Ошибка отправки в чат %s", chat_id)
+            logger.exception("Failed to send to chat %s", chat_id)
             failed += 1
         await asyncio.sleep(delay)
     return sent, failed

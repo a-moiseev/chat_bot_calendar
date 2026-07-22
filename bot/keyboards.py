@@ -1,4 +1,4 @@
-"""Построение инлайн-клавиатуры рассылки из строк 'Текст - ссылка'."""
+"""Build the broadcast inline keyboard from 'Label - link' lines."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def parse_buttons(text: str) -> list[tuple[str, str]]:
-    """Разбирает строки вида 'Текст - https://...' в пары (текст, url).
+    """Parse lines of the form 'Label - https://...' into (label, url) pairs.
 
-    Разделитель — ' - ' (первое вхождение). Пустые строки пропускаются.
-    Бросает ValueError, если в строке нет разделителя или url не http(s).
+    The separator is ' - ', split on its last occurrence. Blank lines are
+    skipped. Raises ButtonParseError if a line has no separator, has an empty
+    part, or carries a non-http(s) URL.
     """
     buttons: list[tuple[str, str]] = []
     for raw in text.splitlines():
@@ -20,7 +21,7 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
             continue
         if " - " not in line:
             raise ValueError(f"Строка без разделителя ' - ': {line!r}")
-        # делим по последнему ' - ': в тексте кнопки может быть тире, в URL — нет
+        # split on the last ' - ': a label may contain a dash, a URL may not
         label, url = line.rsplit(" - ", 1)
         label, url = label.strip(), url.strip()
         if not label or not url:
@@ -36,7 +37,7 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
 
 
 def build_keyboard(buttons: list[tuple[str, str]]) -> InlineKeyboardMarkup | None:
-    """Каждая кнопка — отдельным рядом."""
+    """One button per row."""
     if not buttons:
         return None
     rows = [[InlineKeyboardButton(text=label, url=url)] for label, url in buttons]
@@ -44,12 +45,12 @@ def build_keyboard(buttons: list[tuple[str, str]]) -> InlineKeyboardMarkup | Non
 
 
 def dump_buttons(buttons: list[tuple[str, str]]) -> str:
-    """Сериализация кнопок для хранения в БД."""
+    """Serialise buttons for storage in the database."""
     return json.dumps(buttons, ensure_ascii=False)
 
 
 def load_buttons(data: str | None) -> list[tuple[str, str]]:
-    """Десериализация кнопок из БД."""
+    """Deserialise buttons loaded from the database."""
     if not data:
         return []
     return [(label, url) for label, url in json.loads(data)]

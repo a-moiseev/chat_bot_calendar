@@ -1,4 +1,4 @@
-"""Админские команды: статистика подписчиков и список рассылок."""
+"""Admin commands: subscriber statistics and the list of broadcasts."""
 
 from __future__ import annotations
 
@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 router = Router(name="admin")
 router.message.filter(IsAdmin())
 
-_CHUNK_LIMIT = 3500  # запас под лимит Telegram 4096
+_CHUNK_LIMIT = 3500  # headroom under Telegram's 4096 limit
 
-# Подписчиков, подписавшихся до появления колонки full_name, дозаполняем через
-# getChat — по одному запросу на человека, поэтому за раз берём ограниченную пачку.
+# Subscribers who joined before the full_name column existed are backfilled via
+# getChat — one request per person, so process a bounded batch at a time.
 _BACKFILL_LIMIT = 50
 _BACKFILL_DELAY = 0.05
 
@@ -34,7 +34,7 @@ async def cmd_help(message: Message) -> None:
 
 
 async def _send_lines(message: Message, header: str, lines: list[str]) -> None:
-    """Отправляет заголовок и строки, разбивая на сообщения по лимиту."""
+    """Send a header plus lines, split into messages under the size limit."""
     chunk = header
     for line in lines:
         if len(chunk) + len(line) + 1 > _CHUNK_LIMIT:
@@ -46,7 +46,7 @@ async def _send_lines(message: Message, header: str, lines: list[str]) -> None:
 
 
 async def _backfill_names(bot: Bot, subs: list[db.Subscriber]) -> list[db.Subscriber]:
-    """Подтягивает имена тех, у кого они пустые, и возвращает обновлённый список."""
+    """Fetch names for subscribers missing one; returns the updated list."""
     missing = [s for s in subs if not s.full_name][:_BACKFILL_LIMIT]
     if not missing:
         return subs
@@ -55,7 +55,7 @@ async def _backfill_names(bot: Bot, subs: list[db.Subscriber]) -> list[db.Subscr
         try:
             chat = await bot.get_chat(sub.user_id)
         except TelegramAPIError as err:
-            # Заблокировал бота или удалил аккаунт — оставляем как есть.
+            # Blocked the bot or deleted the account: leave the row as-is.
             logger.warning("getChat failed for %s: %s", sub.user_id, err)
             continue
         await db.set_names(sub.user_id, chat.username, chat.full_name)
@@ -67,7 +67,7 @@ async def _backfill_names(bot: Bot, subs: list[db.Subscriber]) -> list[db.Subscr
 
 
 def _describe(sub: db.Subscriber) -> str:
-    """Имя и @username; имя приходит из профиля, поэтому экранируем."""
+    """Name and @username; the name comes from the profile, so escape it."""
     parts = []
     if sub.full_name:
         parts.append(html.escape(sub.full_name))

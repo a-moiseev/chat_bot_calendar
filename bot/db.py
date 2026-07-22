@@ -1,4 +1,4 @@
-"""Хранилище: подписчики и отложенные рассылки (aiosqlite)."""
+"""Storage: subscribers and scheduled broadcasts (aiosqlite)."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class Subscriber:
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(_SCHEMA)
-        # миграция старых БД, где этих колонок ещё не было
+        # migrate older databases that predate these columns
         async with db.execute("PRAGMA table_info(subscribers)") as cur:
             columns = {row[1] async for row in cur}
         for column in ("username", "full_name"):
@@ -70,7 +70,7 @@ async def add_subscriber(
             "INSERT INTO subscribers (user_id, username, full_name) VALUES (?, ?, ?) "
             "ON CONFLICT(user_id) DO UPDATE SET "
             "  username = excluded.username, "
-            # имя есть не у всех вызовов — не затираем уже сохранённое
+            # not every caller supplies a name: never clobber a stored one
             "  full_name = COALESCE(excluded.full_name, subscribers.full_name)",
             (user_id, username, full_name),
         )
@@ -78,7 +78,7 @@ async def add_subscriber(
 
 
 async def set_names(user_id: int, username: str | None, full_name: str | None) -> None:
-    """Обновляет имя и username подписчика (данные из getChat)."""
+    """Update a subscriber's name and username (data from getChat)."""
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute(
             "UPDATE subscribers SET username = ?, full_name = ? WHERE user_id = ?",
@@ -135,7 +135,7 @@ async def add_scheduled(
 
 
 async def get_pending() -> list[ScheduledBroadcast]:
-    """Ещё не отправленные отложенные рассылки, по возрастанию времени."""
+    """Pending scheduled broadcasts, oldest send time first."""
     async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(
             "SELECT id, text, media_type, file_id, buttons, send_at "
@@ -163,7 +163,7 @@ async def mark_sent(broadcast_id: int) -> None:
 
 
 async def delete_scheduled(broadcast_id: int) -> bool:
-    """Удаляет ещё не отправленную рассылку. Возвращает True, если удалено."""
+    """Delete a not-yet-sent broadcast. Returns True if a row was removed."""
     async with aiosqlite.connect(DB_PATH) as db:
         cur = await db.execute(
             "DELETE FROM scheduled_broadcasts WHERE id = ? AND sent = 0",

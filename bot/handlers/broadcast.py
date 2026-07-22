@@ -1,4 +1,4 @@
-"""Мастер рассылки /broadcast (только для админов)."""
+"""The /broadcast wizard (admins only)."""
 
 from __future__ import annotations
 

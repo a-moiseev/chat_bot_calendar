@@ -1,4 +1,4 @@
-"""Точка входа бота."""
+"""Bot entry point."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 async def main() -> None:
     config.validate()
-    config.get_welcome_text()  # упасть на старте, если нет welcome.html
+    config.get_welcome_text()  # fail at startup if welcome.html is missing
     await init_db()
 
     bot = Bot(
@@ -37,9 +37,9 @@ async def main() -> None:
     dp.include_router(broadcast.router)
     dp.include_router(start.router)
 
-    me = await bot.get_me()  # упасть на старте, если токен не рабочий
+    me = await bot.get_me()  # fail at startup if the token does not work
     health.tick("telegram")
-    logger.info("Бот @%s запущен", me.username)
+    logger.info("Bot @%s started", me.username)
 
     scheduler = start_scheduler(bot)
 

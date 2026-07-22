@@ -1,4 +1,4 @@
-"""Планировщик отложенных рассылок: ежеминутный опрос БД."""
+"""Scheduler for deferred broadcasts: polls the database every minute."""
 
 from __future__ import annotations
 
@@ -21,7 +21,10 @@ async def _process_due(bot: Bot) -> None:
         sent, failed = await broadcast_to_all(bot, payload)
         await db.mark_sent(row.id)
         logger.info(
-            "Отложенная рассылка #%s отправлена: %s, ошибок: %s", row.id, sent, failed
+            "Scheduled broadcast #%s delivered: %s sent, %s failed",
+            row.id,
+            sent,
+            failed,
         )
 
 
@@ -33,7 +36,7 @@ async def _ping_telegram(bot: Bot) -> None:
     try:
         await bot.get_me()
     except Exception:
-        logger.warning("Telegram не ответил на getMe", exc_info=True)
+        logger.warning("Telegram did not answer getMe", exc_info=True)
     else:
         health.tick("telegram")
 
@@ -47,8 +50,9 @@ def start_scheduler(bot: Bot) -> AsyncIOScheduler:
         args=(bot,),
         id=BROADCAST_JOB_ID,
     )
-    # отдельная задача, а не тик внутри _process_due: длинная рассылка занимает
-    # единственный слот due_broadcasts (max_instances=1) и пульс бы пропадал
+    # a separate job rather than a tick inside _process_due: a long broadcast
+    # occupies the single due_broadcasts slot (max_instances=1) and the
+    # heartbeat would go silent
     scheduler.add_job(
         _heartbeat,
         trigger="interval",

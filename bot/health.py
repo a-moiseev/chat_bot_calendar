@@ -1,13 +1,11 @@
-"""Liveness probe: HTTP-эндпоинт /healthz для внешнего мониторинга."""
+"""Liveness probe: a /healthz HTTP endpoint for external monitoring."""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 from collections.abc import Callable
-from functools import partial
 from typing import Any
 
 from aiohttp import web
@@ -17,9 +15,9 @@ from bot import config
 
 logger = logging.getLogger(__name__)
 
-# Сколько терпим отсутствие пульса, прежде чем считать подсистему залипшей.
-LOOP_STALE_SECONDS = 180  # heartbeat планировщика тикает раз в 30 с
-# getMe идёт раз в 5 минут: лимит с запасом, чтобы пара сетевых сбоёв подряд не била тревогу
+# How long a subsystem may go without a heartbeat before we call it stuck.
+LOOP_STALE_SECONDS = 180  # the scheduler heartbeat ticks every 30s
+# getMe runs every 5 minutes; the slack keeps a couple of network blips from firing an alarm
 TELEGRAM_STALE_SECONDS = 900
 
 BROADCAST_JOB_ID = "due_broadcasts"
@@ -27,7 +25,7 @@ TRACKED = (("loop", LOOP_STALE_SECONDS), ("telegram", TELEGRAM_STALE_SECONDS))
 
 
 class Health:
-    """Признаки жизни бота: event loop, связь с Telegram, polling, планировщик."""
+    """Signs of life: event loop, Telegram connectivity, polling, scheduler."""
 
     def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         self._clock = clock
@@ -37,7 +35,7 @@ class Health:
         self._scheduler: BaseScheduler | None = None
 
     def tick(self, name: str) -> None:
-        """Отметить, что подсистема подала признак жизни."""
+        """Record that a subsystem reported a sign of life."""
         self._ticks[name] = self._clock()
 
     def watch(
@@ -52,11 +50,11 @@ class Health:
             self._scheduler = scheduler
 
     def check(self) -> tuple[bool, dict[str, Any]]:
-        """Здоров ли бот и почему нет."""
+        """Whether the bot is healthy, and if not, why."""
         problems: list[str] = []
 
         if self._polling is not None and self._polling.done():
-            problems.append("polling: цикл получения апдейтов остановлен")
+            problems.append("polling: the update polling loop has stopped")
 
         for name, limit in TRACKED:
             problem = self._stale(name, limit)
@@ -87,12 +85,12 @@ class Health:
     def _stale(self, name: str, limit: float) -> str | None:
         age = self._age(name)
         if age is None:
-            # пульса ещё не было: даём подсистеме на раскачку тот же лимит
+            # no heartbeat yet: allow the same limit as warm-up time
             if self._clock() - self._started > limit:
-                return f"{name}: пульса не было ни разу"
+                return f"{name}: no heartbeat recorded yet"
             return None
         if age > limit:
-            return f"{name}: последний пульс {int(age)} с назад (лимит {int(limit)} с)"
+            return f"{name}: last heartbeat {int(age)}s ago (limit {int(limit)}s)"
         return None
 
     def _broadcast_job_problem(self) -> str | None:
@@ -100,9 +98,9 @@ class Health:
             return None
         job = self._scheduler.get_job(BROADCAST_JOB_ID)
         if job is None:
-            return "scheduler: задача отложенных рассылок не найдена"
+            return "scheduler: the scheduled-broadcast job is missing"
         if job.next_run_time is None:
-            return "scheduler: задача отложенных рассылок на паузе"
+            return "scheduler: the scheduled-broadcast job is paused"
         return None
 
 
@@ -115,12 +113,7 @@ async def _healthz(request: web.Request) -> web.Response:
     ok, details = probe.check()
     if not ok:
         logger.warning("Liveness probe: %s", details["problems"])
-    # ensure_ascii=False: причины по-русски, читаемо и в мониторинге, и в curl
-    return web.json_response(
-        details,
-        status=200 if ok else 503,
-        dumps=partial(json.dumps, ensure_ascii=False),
-    )
+    return web.json_response(details, status=200 if ok else 503)
 
 
 def build_app(probe: Health) -> web.Application:
@@ -133,7 +126,7 @@ def build_app(probe: Health) -> web.Application:
 async def start_health_server(
     probe: Health | None = None, port: int | None = None
 ) -> web.AppRunner:
-    """Поднять сервер с /healthz (access-лог выключен: мониторинг ходит часто)."""
+    """Start the /healthz server (access log off: monitors poll frequently)."""
     if probe is None:
         probe = health
     if port is None:
@@ -142,5 +135,5 @@ async def start_health_server(
     runner = web.AppRunner(build_app(probe), access_log=None)
     await runner.setup()
     await web.TCPSite(runner, host="0.0.0.0", port=port).start()
-    logger.info("Liveness probe слушает 0.0.0.0:%s/healthz", port)
+    logger.info("Liveness probe listening on 0.0.0.0:%s/healthz", port)
     return runner
