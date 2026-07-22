@@ -13,7 +13,7 @@ from bot.health import (
 
 
 class FakeClock:
-    """Управляемое время вместо time.monotonic."""
+    """Controllable clock in place of time.monotonic."""
 
     def __init__(self) -> None:
         self.now = 1000.0
@@ -26,7 +26,7 @@ class FakeClock:
 
 
 def _alive(clock=None) -> Health:
-    """Только что запустившийся бот: пульс всех подсистем свежий."""
+    """A freshly started bot: every subsystem has a recent heartbeat."""
     probe = Health(clock=clock or FakeClock())
     probe.tick("loop")
     probe.tick("telegram")
@@ -53,7 +53,7 @@ def test_stale_telegram_tick_is_unhealthy():
     clock = FakeClock()
     probe = _alive(clock)
     clock.advance(TELEGRAM_STALE_SECONDS + 1)
-    probe.tick("loop")  # event loop жив, молчит только Telegram
+    probe.tick("loop")  # the event loop is alive; only Telegram is silent
     ok, details = probe.check()
     assert not ok
     assert details["problems"] == [
@@ -64,7 +64,7 @@ def test_stale_telegram_tick_is_unhealthy():
 def test_missing_ticks_tolerated_only_on_startup():
     clock = FakeClock()
     probe = Health(clock=clock)
-    assert probe.check()[0]  # раскачка: пульса ещё не было, это нормально
+    assert probe.check()[0]  # warm-up: no heartbeat yet, which is fine
     clock.advance(LOOP_STALE_SECONDS + 1)
     assert not probe.check()[0]
 
@@ -84,7 +84,7 @@ async def test_finished_polling_is_unhealthy():
 
 
 async def test_paused_broadcast_job_is_unhealthy():
-    # регресс: задача рассылок на паузе — процесс жив, но рассылки не уходят
+    # regression: a paused broadcast job means the process lives but nothing sends
     sched = scheduler.start_scheduler(bot=None)
     try:
         probe = _alive()
@@ -105,7 +105,7 @@ async def test_ping_telegram_ticks_only_on_success(monkeypatch):
 
     class SilentBot:
         async def get_me(self):
-            raise RuntimeError("нет сети")
+            raise RuntimeError("no network")
 
     await scheduler._ping_telegram(SilentBot())
     assert "telegram" not in probe.check()[1]["last_tick"]

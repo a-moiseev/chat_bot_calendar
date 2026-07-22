@@ -7,6 +7,20 @@ import json
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
+class ButtonParseError(ValueError):
+    """A malformed button line.
+
+    Carries a message key plus its parameters rather than a rendered string,
+    so this module stays free of the locale layer and the caller decides which
+    language to render the complaint in.
+    """
+
+    def __init__(self, key: str, **params: object) -> None:
+        super().__init__(key)
+        self.key = key
+        self.params = params
+
+
 def parse_buttons(text: str) -> list[tuple[str, str]]:
     """Parse lines of the form 'Label - https://...' into (label, url) pairs.
 
@@ -20,19 +34,15 @@ def parse_buttons(text: str) -> list[tuple[str, str]]:
         if not line:
             continue
         if " - " not in line:
-            raise ValueError(f"Строка без разделителя ' - ': {line!r}")
+            raise ButtonParseError("button_error.no_separator", line=line)
         # split on the last ' - ': a label may contain a dash, a URL may not
         label, url = line.rsplit(" - ", 1)
         label, url = label.strip(), url.strip()
-        if not label or not url:
-            raise ValueError(f"Пустой текст или ссылка: {line!r}")
         if not url.startswith(("http://", "https://")):
-            raise ValueError(
-                f"Ссылка должна начинаться с http:// или https://: {url!r}"
-            )
+            raise ButtonParseError("button_error.bad_scheme", url=url)
         buttons.append((label, url))
     if not buttons:
-        raise ValueError("Не найдено ни одной кнопки.")
+        raise ButtonParseError("button_error.no_buttons")
     return buttons
 
 

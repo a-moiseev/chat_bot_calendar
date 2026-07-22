@@ -1,11 +1,11 @@
-"""Тесты отправки одного сообщения рассылки."""
+"""Tests for delivering a single broadcast message."""
 
 from unittest.mock import AsyncMock
 
 from bot.broadcaster import BroadcastPayload, send_to
 
 CHAT_ID = 42
-LONG_TEXT = "a" * 2000  # длиннее лимита подписи (1024), но короче лимита текста
+LONG_TEXT = "a" * 2000  # over the caption limit (1024), under the text limit
 
 
 def _bot() -> AsyncMock:
@@ -14,7 +14,7 @@ def _bot() -> AsyncMock:
 
 async def test_text_only_sends_single_message() -> None:
     bot = _bot()
-    payload = BroadcastPayload(text="привет", media_type=None, file_id=None, buttons=[])
+    payload = BroadcastPayload(text="hello", media_type=None, file_id=None, buttons=[])
 
     await send_to(bot, CHAT_ID, payload)
 
@@ -31,7 +31,8 @@ async def test_photo_with_long_text_is_split_into_two_messages() -> None:
 
     await send_to(bot, CHAT_ID, payload)
 
-    # Медиа без подписи, полный текст — отдельным сообщением (не режется 1024).
+    # Media without a caption; the full text goes as its own message so the
+    # 1024-character caption limit never truncates it.
     bot.send_photo.assert_awaited_once()
     assert "caption" not in bot.send_photo.await_args.kwargs
     bot.send_message.assert_awaited_once()
@@ -41,10 +42,10 @@ async def test_photo_with_long_text_is_split_into_two_messages() -> None:
 async def test_buttons_go_on_text_message_not_media() -> None:
     bot = _bot()
     payload = BroadcastPayload(
-        text="текст",
+        text="body",
         media_type="photo",
         file_id="file123",
-        buttons=[("Кнопка", "https://example.com")],
+        buttons=[("Button", "https://example.com")],
     )
 
     await send_to(bot, CHAT_ID, payload)
@@ -59,7 +60,7 @@ async def test_media_without_text_keeps_buttons_on_media() -> None:
         text=None,
         media_type="video",
         file_id="file123",
-        buttons=[("Кнопка", "https://example.com")],
+        buttons=[("Button", "https://example.com")],
     )
 
     await send_to(bot, CHAT_ID, payload)

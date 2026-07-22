@@ -12,8 +12,9 @@ from aiogram.exceptions import TelegramAPIError
 from aiogram.filters import Command, CommandObject
 from aiogram.types import Message
 
-from bot import config, db
+from bot import db
 from bot.filters import IsAdmin
+from bot.i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ _BACKFILL_DELAY = 0.05
 
 @router.message(F.text == "/help")
 async def cmd_help(message: Message) -> None:
-    await message.answer(config.get_help_text())
+    await message.answer(t("help.text"))
 
 
 async def _send_lines(message: Message, header: str, lines: list[str]) -> None:
@@ -80,10 +81,10 @@ def _describe(sub: db.Subscriber) -> str:
 async def cmd_stats(message: Message, bot: Bot) -> None:
     subs = await db.get_all_subscribers()
     if not subs:
-        await message.answer("Подписчиков пока нет.")
+        await message.answer(t("admin.no_subscribers"))
         return
     subs = await _backfill_names(bot, subs)
-    header = f"Подписчиков: <b>{len(subs)}</b>"
+    header = t("admin.subscribers_header", count=len(subs))
     lines = [
         f"{i}. <code>{s.user_id}</code> {_describe(s)}" for i, s in enumerate(subs, 1)
     ]
@@ -94,12 +95,9 @@ async def cmd_stats(message: Message, bot: Bot) -> None:
 async def cmd_scheduled(message: Message) -> None:
     items = await db.get_pending()
     if not items:
-        await message.answer("Запланированных рассылок нет.")
+        await message.answer(t("admin.no_scheduled"))
         return
-    header = (
-        f"Запланировано: <b>{len(items)}</b>\n"
-        "Отменить: <code>/cancel_scheduled id</code>"
-    )
+    header = t("admin.scheduled_header", count=len(items))
     lines = []
     for it in items:
         snippet = html.escape((it.text or "").strip().replace("\n", " "))[:60]
@@ -107,7 +105,15 @@ async def cmd_scheduled(message: Message) -> None:
         if it.media_type:
             tags.append(it.media_type)
         tag_str = f" [{', '.join(tags)}]" if tags else ""
-        lines.append(f"<b>#{it.id}</b> — {it.send_at} (мск){tag_str}\n{snippet}…")
+        lines.append(
+            t(
+                "admin.scheduled_item",
+                id=it.id,
+                send_at=it.send_at,
+                tags=tag_str,
+                snippet=snippet,
+            )
+        )
     await _send_lines(message, header, lines)
 
 
@@ -115,9 +121,9 @@ async def cmd_scheduled(message: Message) -> None:
 async def cmd_cancel_scheduled(message: Message, command: CommandObject) -> None:
     arg = (command.args or "").strip()
     if not arg.isdigit():
-        await message.answer("Укажите id рассылки: <code>/cancel_scheduled 3</code>")
+        await message.answer(t("admin.cancel_usage"))
         return
     if await db.delete_scheduled(int(arg)):
-        await message.answer(f"Рассылка #{arg} отменена.")
+        await message.answer(t("admin.cancel_done", id=arg))
     else:
-        await message.answer(f"Рассылка #{arg} не найдена среди запланированных.")
+        await message.answer(t("admin.cancel_not_found", id=arg))

@@ -13,11 +13,13 @@ load_dotenv()
 ROOT_DIR = Path(__file__).resolve().parent.parent
 DB_PATH = Path(os.environ.get("DB_PATH") or ROOT_DIR / "bot.sqlite3")
 WELCOME_FILE = ROOT_DIR / "config" / "welcome.html"
-HELP_FILE = ROOT_DIR / "config" / "help.html"
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT") or 8080)
+
+# Which config/messages.<locale>.toml the bot speaks. See bot/i18n.py.
+LOCALE = os.environ.get("LOCALE", "en").strip().lower() or "en"
 
 ADMIN_IDS: set[int] = {
     int(part)
@@ -35,14 +37,6 @@ def get_welcome_text() -> str:
             "config/welcome.html and write your greeting there."
         )
     return WELCOME_FILE.read_text(encoding="utf-8").strip()
-
-
-@lru_cache(maxsize=1)
-def get_help_text() -> str:
-    """Текст справки для админов из help.html (читается один раз)."""
-    if not HELP_FILE.is_file():
-        raise FileNotFoundError("Не найден config/help.html.")
-    return HELP_FILE.read_text(encoding="utf-8").strip()
 
 
 def validate() -> None:

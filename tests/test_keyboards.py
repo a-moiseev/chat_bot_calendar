@@ -1,11 +1,17 @@
 import pytest
 
-from bot.keyboards import build_keyboard, dump_buttons, load_buttons, parse_buttons
+from bot.keyboards import (
+    ButtonParseError,
+    build_keyboard,
+    dump_buttons,
+    load_buttons,
+    parse_buttons,
+)
 
 
 def test_parse_single_button():
-    assert parse_buttons("Выбрать курс - https://example.com") == [
-        ("Выбрать курс", "https://example.com")
+    assert parse_buttons("Pick a course - https://example.com") == [
+        ("Pick a course", "https://example.com")
     ]
 
 
@@ -15,19 +21,34 @@ def test_parse_multiple_and_skip_blank_lines():
 
 
 def test_parse_label_with_inner_dash():
-    # разделитель — первое ' - ', тире внутри текста сохраняется
-    assert parse_buttons("Курс - скидка - https://x.com") == [
-        ("Курс - скидка", "https://x.com")
+    # split on the last ' - ', so a dash inside the label survives
+    assert parse_buttons("Course - discount - https://x.com") == [
+        ("Course - discount", "https://x.com")
     ]
 
 
 @pytest.mark.parametrize(
-    "text",
-    ["нет разделителя", "Текст - ftp://x.com", " - https://x.com", "Текст - ", ""],
+    ("text", "key"),
+    [
+        ("no separator here", "button_error.no_separator"),
+        ("Label - ftp://x.com", "button_error.bad_scheme"),
+        # a stripped line can never start or end with the separator's padding,
+        # so these report a missing separator rather than an empty part
+        (" - https://x.com", "button_error.no_separator"),
+        ("Label - ", "button_error.no_separator"),
+        ("", "button_error.no_buttons"),
+    ],
 )
-def test_parse_invalid_raises(text):
-    with pytest.raises(ValueError):
+def test_parse_invalid_raises(text, key):
+    with pytest.raises(ButtonParseError) as excinfo:
         parse_buttons(text)
+    assert excinfo.value.key == key
+
+
+def test_button_parse_error_is_a_value_error():
+    """Callers that only catch ValueError keep working."""
+    with pytest.raises(ValueError):
+        parse_buttons("no separator here")
 
 
 def test_build_keyboard_one_row_per_button():
@@ -42,6 +63,7 @@ def test_build_keyboard_empty_is_none():
 
 
 def test_dump_load_roundtrip():
+    # non-ASCII round-trips intact (dump uses ensure_ascii=False)
     buttons = [("Привет", "https://example.com/п")]
     assert load_buttons(dump_buttons(buttons)) == buttons
 

@@ -2,7 +2,7 @@ from bot import db, scheduler
 
 
 async def test_process_due_marks_sent(tmp_db):
-    # без подписчиков broadcast_to_all не трогает bot, поэтому bot=None безопасен
+    # with no subscribers broadcast_to_all never touches bot, so None is safe
     await db.init_db()
     await db.add_scheduled(
         text="hi",
@@ -29,7 +29,7 @@ async def test_process_due_skips_future(tmp_db):
 
 
 async def test_scheduler_job_is_not_paused():
-    # регресс: next_run_time=None ставил задачу на паузу -> рассылки не уходили
+    # regression: next_run_time=None paused the job, so broadcasts stopped going out
     sched = scheduler.start_scheduler(bot=None)
     try:
         job = sched.get_job("due_broadcasts")

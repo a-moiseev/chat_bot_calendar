@@ -1,0 +1,79 @@
+# User-facing strings for the Telegram UI.
+#
+# Operator-facing text (startup errors, /healthz problems, log lines) is NOT
+# here — it is hardcoded English in the source, because it is read by whoever
+# runs the bot rather than by whoever uses it.
+#
+# Conventions:
+#   - Key sets must be identical across every messages.*.toml (tests/test_i18n.py).
+#   - Placeholders use str.format() syntax; a literal brace must be doubled: {{ }}.
+#   - Values may contain Telegram HTML (<b>, <code>) — parse_mode=HTML is global.
+#   - Avoid nouns that agree with a number. Prefer the label form
+#     ("Recipients: 5") over "5 recipients", which needs plural rules in Russian.
+
+[button]
+skip = "⏭ Skip"
+send_now = "📣 Send now"
+schedule = "🕒 Schedule"
+cancel = "✖️ Cancel"
+
+[word]
+# Plain-text mirror of button.skip, for naming the button inside prose.
+# A test asserts word.skip is a substring of button.skip so the two cannot drift.
+skip = "Skip"
+
+[broadcast]
+cancelled = "Broadcast cancelled."
+ask_text = "Creating a broadcast. Send the message <b>text</b> (formatting is preserved). /cancel to abort."
+ask_media = "Got it. Attach a <b>photo or video</b> — or press «{skip}»."
+ask_buttons = "Buttons — one per line, as <code>Label - https://link</code>.\nOr press «{skip}»."
+buttons_parse_failed = "Could not parse the buttons: {reason}\nTry again, or press «{skip}»."
+preview = "Here is how the broadcast will look:"
+ask_when = "Recipients: <b>{count}</b>\nWhen should it go out?"
+sending = "Sending…"
+sent = "Done. Sent: {sent}, failed: {failed}."
+ask_datetime = "Send the date and time (Moscow). For example:\n<code>24.06.2026 19:00</code>, <code>24.06 19:00</code> (current year), or just <code>19:00</code> (today)."
+bad_datetime = "I could not read that date. Format: <code>DD.MM.YYYY HH:MM</code>. Please try again."
+past_datetime = "That time has already passed. Pick a future date and time."
+scheduled = "Scheduled for <b>{send_at}</b> (Moscow time)."
+
+[button_error]
+# {line!r} / {url!r} keep the repr() conversion the original f-strings used, so
+# the offending input is shown quoted with escapes visible.
+no_separator = "Line has no ' - ' separator: {line!r}"
+bad_scheme = "Link must start with http:// or https://: {url!r}"
+no_buttons = "No buttons found."
+
+[admin]
+no_subscribers = "No subscribers yet."
+subscribers_header = "Subscribers: <b>{count}</b>"
+no_scheduled = "No scheduled broadcasts."
+scheduled_header = "Scheduled: <b>{count}</b>\nTo cancel: <code>/cancel_scheduled id</code>"
+scheduled_item = "<b>#{id}</b> — {send_at} (Moscow){tags}\n{snippet}…"
+cancel_usage = "Specify the broadcast id: <code>/cancel_scheduled 3</code>"
+cancel_done = "Broadcast #{id} cancelled."
+cancel_not_found = "Broadcast #{id} was not found among the scheduled ones."
+
+[help]
+text = '''
+<b>Admin commands</b>
+
+/broadcast — create a broadcast to all subscribers.
+A step-by-step wizard asks for: text -> photo/video (skippable) -> buttons (skippable) -> when to send (now or scheduled).
+/cancel — abort creating a broadcast.
+
+/stats — subscriber count and list (id, name, username).
+
+/scheduled — list pending scheduled broadcasts.
+/cancel_scheduled &lt;id&gt; — cancel a pending broadcast by its number.
+
+/help — this message.
+
+<b>Button format</b>
+One per line: <code>Label - https://link</code>
+
+<b>Date format (Moscow time)</b>
+<code>24.06.2026 19:00</code> — full date
+<code>24.06 19:00</code> — current year
+<code>19:00</code> — today
+'''

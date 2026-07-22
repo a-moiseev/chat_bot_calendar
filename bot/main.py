@@ -9,7 +9,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from bot import config
+from bot import config, i18n
 from bot.db import init_db
 from bot.handlers import admin, broadcast, start
 from bot.health import health, start_health_server
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 async def main() -> None:
     config.validate()
     config.get_welcome_text()  # fail at startup if welcome.html is missing
+    i18n.validate()  # fail at startup if the LOCALE catalog is missing/malformed
     await init_db()
 
     bot = Bot(
