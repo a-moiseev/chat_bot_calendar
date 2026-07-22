@@ -32,4 +32,16 @@ jobs:
         run: mypy .
 
       - name: Run tests
-        run: pytest
+        run: pytest --cov=bot --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          # Never fail the build on a Codecov outage: coverage is a report,
+          # not a gate. The gate is fail_under in .coveragerc.
+          fail_ci_if_error: false
+        env:
+          # Optional for a public repo (tokenless upload works); set the secret
+          # only if uploads start hitting Codecov's rate limit.
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

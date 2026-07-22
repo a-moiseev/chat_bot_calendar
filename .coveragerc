@@ -1,0 +1,13 @@
+[run]
+source = bot
+
+[report]
+# The gate. Coverage sits at 92%; the margin absorbs a refactor without turning
+# every pull request into a coverage negotiation. bot/main.py is the one large
+# uncovered file — it is the entrypoint, and it is deliberately not excluded
+# here so the reported number stays honest.
+fail_under = 90
+show_missing = true
+exclude_also =
+    if TYPE_CHECKING:
+    raise NotImplementedError
